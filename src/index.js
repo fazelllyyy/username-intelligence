@@ -1,6 +1,18 @@
 import { analyze } from "./core/analyzer.js";
 
-export function analyzeUsername(username) {
+const DEFAULT_OPTIONS = {
+  enableCache: true,
+  enableSecurity: true,
+  enableLinguistic: true,
+  enableVisual: true,
+  enablePatterns: true,
+  enableStructure: true,
+  strict: false,
+  blockProfanity: false,
+  checkVisual: false
+};
+
+export function analyzeUsername(username, options = {}) {
   if (typeof username !== "string") {
     throw new Error("Username must be a string");
   }
@@ -13,7 +25,8 @@ export function analyzeUsername(username) {
     throw new Error("Username exceeds maximum length of 1000 characters");
   }
 
-  return analyze(username);
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  return analyze(username, opts);
 }
 
 export function batchAnalyze(usernames, options = {}) {
@@ -22,11 +35,11 @@ export function batchAnalyze(usernames, options = {}) {
   }
 
   const results = [];
-  const { stopOnError = false, includeErrors = true } = options;
+  const { stopOnError = false, includeErrors = true, ...analyzeOptions } = options;
 
   for (const username of usernames) {
     try {
-      const analysis = analyzeUsername(username);
+      const analysis = analyzeUsername(username, analyzeOptions);
       results.push({
         username,
         analysis,
@@ -40,7 +53,7 @@ export function batchAnalyze(usernames, options = {}) {
           success: false
         });
       }
-      
+
       if (stopOnError) {
         throw error;
       }
@@ -50,9 +63,9 @@ export function batchAnalyze(usernames, options = {}) {
   return results;
 }
 
-export function compareUsernames(username1, username2) {
-  const analysis1 = analyzeUsername(username1);
-  const analysis2 = analyzeUsername(username2);
+export function compareUsernames(username1, username2, options = {}) {
+  const analysis1 = analyzeUsername(username1, options);
+  const analysis2 = analyzeUsername(username2, options);
 
   return {
     username1: {
@@ -66,15 +79,15 @@ export function compareUsernames(username1, username2) {
     comparison: {
       length_difference: Math.abs(analysis1.meta.length - analysis2.meta.length),
       entropy_difference: Math.abs(
-        analysis1.classification.scores.entropy - 
+        analysis1.classification.scores.entropy -
         analysis2.classification.scores.entropy
       ),
       quality_difference: Math.abs(
-        analysis1.classification.scores.quality - 
+        analysis1.classification.scores.quality -
         analysis2.classification.scores.quality
       ),
       security_risk_difference: Math.abs(
-        analysis1.classification.scores.security_risk - 
+        analysis1.classification.scores.security_risk -
         analysis2.classification.scores.security_risk
       ),
       same_script: analysis1.script.primary === analysis2.script.primary,
@@ -108,7 +121,7 @@ function calculateSimilarityScore(analysis1, analysis2) {
   maxScore += 10;
 
   const entropyDiff = Math.abs(
-    analysis1.classification.scores.entropy - 
+    analysis1.classification.scores.entropy -
     analysis2.classification.scores.entropy
   );
   if (entropyDiff < 1) {
@@ -118,14 +131,14 @@ function calculateSimilarityScore(analysis1, analysis2) {
   }
   maxScore += 15;
 
-  const sharedPatterns = analysis1.patterns.filter(p => 
+  const sharedPatterns = analysis1.patterns.filter(p =>
     analysis2.patterns.includes(p)
   ).length;
   score += Math.min(sharedPatterns * 5, 20);
   maxScore += 20;
 
   const qualityDiff = Math.abs(
-    analysis1.classification.scores.quality - 
+    analysis1.classification.scores.quality -
     analysis2.classification.scores.quality
   );
   if (qualityDiff < 10) {
@@ -135,7 +148,7 @@ function calculateSimilarityScore(analysis1, analysis2) {
   }
   maxScore += 10;
 
-  const sharedThreats = analysis1.security.threats.filter(t => 
+  const sharedThreats = analysis1.security.threats.filter(t =>
     analysis2.security.threats.includes(t)
   ).length;
   score += Math.min(sharedThreats * 3, 10);
@@ -146,10 +159,17 @@ function calculateSimilarityScore(analysis1, analysis2) {
 
 export { normalizeUsername, normalizeAggressively } from "./utils/normalize.js";
 export { calculateEntropy, analyzeComplexity, analyzeBigrams } from "./utils/math.js";
-export { 
-  detectHomoglyphs, 
-  detectConfusables, 
+export {
+  detectHomoglyphs,
+  detectConfusables,
   isLikelyPhishing,
   detectMixedScriptSpoofing,
   analyzeScriptConsistency
 } from "./utils/text.js";
+export {
+  getCachedAnalysis,
+  setCachedAnalysis,
+  clearCache,
+  getCacheStats,
+  LRUCache
+} from "./utils/cache.js";

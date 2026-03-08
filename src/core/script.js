@@ -1,71 +1,67 @@
 import { UNICODE_SCRIPTS } from "../data/scripts.js";
+import { RTL_SCRIPTS_SET, IGNORED_SCRIPTS_SET, isSafeScriptMix } from "../utils/patterns.js";
 
-const SAFE_MIX_PAIRS = [
-  ["Latin", "Han"],
-  ["Latin", "Hiragana"],
-  ["Latin", "Katakana"],
-  ["Latin", "Hangul"],
-  ["Latin", "Cyrillic"],
-  ["Latin", "Greek"],
-  ["Latin", "Arabic"],
-  ["Latin", "Hebrew"],
-  ["Latin", "Thai"],
-  ["Latin", "Devanagari"],
-  ["Han", "Hiragana"],
-  ["Han", "Katakana"],
-  ["Hiragana", "Katakana"],
-  ["Han", "Hiragana", "Katakana"],
-  ["Han", "Hangul"],
-  ["Han", "Bopomofo"],
-  ["Arabic", "Persian"],
-  ["Devanagari", "Bengali"],
-  ["Cyrillic", "Latin"]
-];
+const COMMON_SCRIPTS = ["Latin", "Cyrillic", "Greek", "Arabic", "Hebrew", "Han", "Hiragana", "Katakana", "Hangul", "Thai", "Devanagari"];
 
-const IGNORED_SCRIPTS = ["Common", "Inherited"];
-
-const RTL_SCRIPTS = ["Arabic", "Hebrew", "Syriac", "Thaana", "Nko"];
-
-const CONFUSABLE_PAIRS = [
-  { original: /[а-яА-Я]/g, script: "Cyrillic" },
-  { original: /[α-ωΑ-Ω]/g, script: "Greek" }
-];
+const SCRIPT_CACHE = new Map();
 
 export function detectScript(username) {
+  const cacheKey = username;
+  if (SCRIPT_CACHE.has(cacheKey)) {
+    return SCRIPT_CACHE.get(cacheKey);
+  }
+
   const detected = {};
-  let totalDetected = 0;
   const len = username.length;
 
-  for (const script of UNICODE_SCRIPTS) {
+  for (const script of COMMON_SCRIPTS) {
     try {
       const regex = new RegExp(`\\p{Script=${script}}`, 'gu');
       const match = username.match(regex);
-      
+
       if (match) {
         detected[script] = match.length;
-        totalDetected += match.length;
       }
     } catch (e) {
       continue;
     }
   }
 
+  const totalDetected = Object.values(detected).reduce((sum, count) => sum + count, 0);
+  
+  if (totalDetected < len * 0.8) {
+    for (const script of UNICODE_SCRIPTS) {
+      if (detected[script]) continue;
+      if (!COMMON_SCRIPTS.includes(script)) {
+        try {
+          const regex = new RegExp(`\\p{Script=${script}}`, 'gu');
+          const match = username.match(regex);
+
+          if (match) {
+            detected[script] = match.length;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+  }
+
   const emojiRegex = /\p{Emoji_Presentation}/gu;
   const emojiMatch = username.match(emojiRegex);
   const emojiCount = emojiMatch ? emojiMatch.length : 0;
-  
+
   if (emojiCount > 0) {
     detected["Emoji"] = emojiCount;
-    totalDetected += emojiCount;
   }
 
-  const unknownCount = len - totalDetected;
+  const unknownCount = len - Object.values(detected).reduce((sum, count) => sum + count, 0);
   if (unknownCount > 0) {
     detected["Unknown"] = unknownCount;
   }
 
-  const activeScripts = Object.keys(detected).filter(s => 
-    !IGNORED_SCRIPTS.includes(s) && s !== "Unknown" && s !== "Emoji"
+  const activeScripts = Object.keys(detected).filter(s =>
+    !IGNORED_SCRIPTS_SET.has(s) && s !== "Unknown" && s !== "Emoji"
   );
 
   let primary = "Unknown";
@@ -74,7 +70,7 @@ export function detectScript(username) {
   let secondMax = 0;
 
   for (const [script, count] of Object.entries(detected)) {
-    if (!IGNORED_SCRIPTS.includes(script)) {
+    if (!IGNORED_SCRIPTS_SET.has(script)) {
       if (count > max) {
         secondMax = max;
         secondary = primary !== "Unknown" ? primary : null;
@@ -96,35 +92,20 @@ export function detectScript(username) {
   }
 
   const isMixed = activeScripts.length > 1;
-  const isRTL = RTL_SCRIPTS.includes(primary);
-  const hasRTL = activeScripts.some(s => RTL_SCRIPTS.includes(s));
-  const hasBidiMix = hasRTL && activeScripts.some(s => !RTL_SCRIPTS.includes(s) && s !== "Common");
+  const isRTL = RTL_SCRIPTS_SET.has(primary);
+  const hasRTL = activeScripts.some(s => RTL_SCRIPTS_SET.has(s));
+  const hasBidiMix = hasRTL && activeScripts.some(s => !RTL_SCRIPTS_SET.has(s) && s !== "Common");
 
   let isDangerousMix = false;
 
   if (isMixed) {
-    activeScripts.sort();
-    const currentMix = activeScripts.join(",");
-    
-    let isSafe = false;
-    for (const pair of SAFE_MIX_PAIRS) {
-      const safePair = [...pair].sort().join(",");
-      if (currentMix === safePair) {
-        isSafe = true;
-        break;
-      }
-    }
-    
-    if (!isSafe) {
+    if (!isSafeScriptMix(activeScripts)) {
       const cjk = ["Han", "Hiragana", "Katakana", "Hangul", "Bopomofo"];
-      const cyrillic = ["Cyrillic"];
-      const latin = ["Latin"];
-      
       const isAllCJK = activeScripts.every(s => cjk.includes(s));
-      const hasCyrillicLatin = activeScripts.some(s => cyrillic.includes(s)) && 
-                               activeScripts.some(s => latin.includes(s));
-      
+
       if (!isAllCJK) {
+        const hasCyrillicLatin = activeScripts.includes("Cyrillic") && activeScripts.includes("Latin");
+        
         if (hasCyrillicLatin) {
           isDangerousMix = true;
         } else if (activeScripts.length > 3) {
@@ -146,7 +127,7 @@ export function detectScript(username) {
 
   const scriptDiversity = activeScripts.length / Math.max(1, len);
 
-  return {
+  const result = {
     primary,
     secondary,
     detected: Object.keys(detected),
@@ -160,4 +141,13 @@ export function detectScript(username) {
     script_diversity: Number(scriptDiversity.toFixed(3)),
     active_scripts: activeScripts
   };
+
+  SCRIPT_CACHE.set(cacheKey, result);
+  
+  if (SCRIPT_CACHE.size > 1000) {
+    const firstKey = SCRIPT_CACHE.keys().next().value;
+    SCRIPT_CACHE.delete(firstKey);
+  }
+
+  return result;
 }

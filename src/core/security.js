@@ -32,7 +32,7 @@ const IDN_HOMOGLYPHS = {
   'y': ['у', 'ỳ', 'ý']
 };
 
-export function detectSecurity(username, scriptInfo) {
+export function detectSecurity(username, scriptInfo, options = {}) {
   const chars = [...username];
   const threats = [];
   const warnings = [];
