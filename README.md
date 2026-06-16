@@ -1,11 +1,11 @@
-# username-intelligence
+# @fazelstudio/username-intelligence
 
-[![npm version](https://img.shields.io/npm/v/username-intelligence.svg?style=flat)](https://www.npmjs.com/package/username-intelligence)
+[![npm version](https://img.shields.io/npm/v/@fazelstudio/username-intelligence.svg?style=flat)](https://www.npmjs.com/package/@fazelstudio/username-intelligence)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Global Username Analysis & Security Scoring Library**
 
-`username-intelligence` is an advanced, lightweight library designed to analyze usernames for modern applications. Beyond simple regex validation, it evaluates **security context**, **bot patterns**, **spoofing risks**, and supports **hundreds of global language scripts** (Unicode).
+`@fazelstudio/username-intelligence` is an advanced, lightweight library designed to analyze usernames for modern applications. Beyond simple regex validation, it evaluates **security context**, **bot patterns**, **spoofing risks**, and supports **hundreds of global language scripts** (Unicode).
 
 Perfect for:
 - 🛡️ Detecting spam/bot accounts during registration.
@@ -25,7 +25,7 @@ Perfect for:
 ## Installation
 
 ```bash
-npm install username-intelligence
+npm install @fazelstudio/username-intelligence
 ```
 
 ## Usage
@@ -33,7 +33,7 @@ npm install username-intelligence
 ### 1. Basic Analysis
 **The easiest way to use the library. Simply pass a username to get a full analysis.**
 ```
-import { analyzeUsername } from 'username-intelligence';
+import { analyzeUsername } from '@fazelstudio/username-intelligence';
 
 // Example: Analyzing a username with leet speak
 const result = analyzeUsername('h4ck3r_man');

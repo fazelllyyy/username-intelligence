@@ -1,6 +1,6 @@
 {
-  "name": "username-intelligence",
-  "version": "1.0.3",
+  "name": "@fazelstudio/username-intelligence",
+  "version": "1.1.0",
   "description": "Advanced username analysis library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,16 +19,16 @@
     "analysis",
     "validation"
   ],
-  "author": "fazelnotgege",
+  "author": "fazelllyyy",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fazelnotgg/username-intelligence.git"
+    "url": "git+https://github.com/fazelllyyy/username-intelligence.git"
   },
   "bugs": {
-    "url": "https://github.com/fazelnotgg/username-intelligence/issues"
+    "url": "https://github.com/fazelllyyy/username-intelligence/issues"
   },
-  "homepage": "https://github.com/fazelnotgg/username-intelligence#readme",
+  "homepage": "https://github.com/fazelllyyy/username-intelligence#readme",
   "devDependencies": {
     "rimraf": "^6.1.2",
     "tsup": "^8.5.1",
